@@ -1,0 +1,18 @@
+import { Logo } from '@/components/ui/Logo';
+import { Background } from '@/components/ui/Background';
+//...
+export default function LoginPage() {
+  return (
+    <Background>
+      <div className="flex min-h-screen items-center justify-center">
+        <Card className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <Logo variant="horizontal" className="mx-auto" />
+            <p className="text-gray-400 mt-2">Sistema de Autoauditoría Premium</p>
+          </div>
+          {/* ... resto del formulario */}
+        </Card>
+      </div>
+    </Background>
+  );
+}
