@@ -1,0 +1,107 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // hasheado con bcrypt
+  name      String
+  role      Role     @default(USER)
+  tenantId  String?  // para multi-tenant (opcional)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  auditorias  Auditoria[] @relation("Auditor")
+  evidencias  Evidencia[] @relation("EvidenciaUser")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  AUDITOR
+  USER
+}
+
+model Norma {
+  id          String   @id @default(cuid())
+  codigo      String   @unique // ej: "ISO9001", "NOM-001"
+  titulo      String
+  descripcion String?
+  tipo        String   // "ISO" o "NOM"
+  version     String?
+  publicada   DateTime?
+  requisitos  Requisito[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Requisito {
+  id          String   @id @default(cuid())
+  normaId     String
+  norma       Norma    @relation(fields: [normaId], references: [id], onDelete: CASCADE)
+  numero      String   // ej: "4.1", "5.2"
+  descripcion String
+  cumplimientoObligatorio Boolean @default(true)
+  peso        Int      @default(1) // para ponderación
+  // Evidencia esperada (texto)
+  evidenciaEsperada String?
+  // Checklists asociados
+  checklists  Checklist[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Checklist {
+  id          String   @id @default(cuid())
+  requisitoId String
+  requisito   Requisito @relation(fields: [requisitoId], references: [id], onDelete: CASCADE)
+  auditoriaId String?
+  auditoria   Auditoria? @relation(fields: [auditoriaId], references: [id])
+  // Respuesta del auditor
+  cumple      Boolean?
+  observacion String?
+  // Evidencia subida (puede ser múltiple)
+  evidencias  Evidencia[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Auditoria {
+  id          String   @id @default(cuid())
+  titulo      String
+  descripcion String?
+  fecha       DateTime
+  // Auditor responsable
+  auditorId   String
+  auditor     User     @relation("Auditor", fields: [auditorId], references: [id])
+  // Empresa o área auditada (opcional)
+  area        String?
+  // Estado: EN_PROGRESO, FINALIZADA
+  estado      String   @default("EN_PROGRESO")
+  // Puntuación calculada (0-100)
+  puntuacion  Float?
+  // Checklists asociados
+  checklists  Checklist[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Evidencia {
+  id          String   @id @default(cuid())
+  nombre      String
+  url         String   // ruta del archivo
+  tipo        String   // "PDF", "IMG", "DOC", etc.
+  checklistId String
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: CASCADE)
+  subidoPor   String
+  subidoPorUser User   @relation("EvidenciaUser", fields: [subidoPor], references: [id])
+  createdAt   DateTime @default(now())
+}
