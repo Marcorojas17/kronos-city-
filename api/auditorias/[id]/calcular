@@ -1,0 +1,25 @@
+import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+
+export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const auditoria = await prisma.auditoria.findUnique({
+    where: { id: params.id },
+    include: { checklists: { include: { requisito: true } } },
+  });
+
+  if (!auditoria) return NextResponse.json({ error: 'No encontrada' }, { status: 404 });
+
+  const totalPeso = auditoria.checklists.reduce((acc, c) => acc + c.requisito.peso, 0);
+  const cumplidoPeso = auditoria.checklists
+    .filter(c => c.cumple === true)
+    .reduce((acc, c) => acc + c.requisito.peso, 0);
+
+  const puntuacion = totalPeso > 0 ? (cumplidoPeso / totalPeso) * 100 : 0;
+
+  await prisma.auditoria.update({
+    where: { id: params.id },
+    data: { puntuacion, estado: 'FINALIZADA' },
+  });
+
+  return NextResponse.json({ puntuacion });
+}
